@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+data/
+*.db
+*.db-wal
+*.db-shm
+players.json
+.venv/
+.pytest_cache/
