@@ -46,6 +46,22 @@ def show(embed) -> None:
     print(f"  └─ {DIM}{embed.footer.text or ''} · {stamp}{RESET}\n")
 
 
+def show_teams(ctx) -> None:
+    """Print the roster_id -> team name join the alerts depend on.
+
+    This is the lookup that makes an alert say "Hurts Donut" instead of
+    "Roster 3", so seeing your league's real names here confirms both the
+    league id and the users/rosters join in one look.
+    """
+    print(f"{BOLD}Teams the bot resolved{RESET}\n")
+    for roster in sorted(ctx.rosters, key=lambda r: r.get("roster_id") or 0):
+        roster_id = roster.get("roster_id")
+        count = len(roster.get("players") or [])
+        detail = f"{count} players" if count else "no players yet (predraft)"
+        print(f"  {roster_id:>2}  {ctx.team_name(roster_id):<24} {DIM}{detail}{RESET}")
+    print(f"\n{DIM}Names look right? Then SLEEPER_LEAGUE_ID is correct.{RESET}\n")
+
+
 def preview_fixtures() -> None:
     from tests import fixtures
 
@@ -89,11 +105,17 @@ async def preview_league(league_id: str) -> None:
             ]
             announceable.sort(key=lambda t: t.get("status_updated") or 0)
 
+            ctx = await load_context(client)
+
             if not announceable:
-                print("No transactions in these weeks yet — normal in the preseason.\n")
+                # Predraft and early preseason leagues have nothing to render,
+                # which would leave a misconfigured league id looking identical
+                # to a quiet one. Show the roster join instead: if the team
+                # names below are your league's, the config is right.
+                print("No transactions in these weeks yet — expected before the draft.\n")
+                show_teams(ctx)
                 return
 
-            ctx = await load_context(client)
             for txn in announceable:
                 show(render_transaction(txn, ctx, league.get("name", "League")))
 

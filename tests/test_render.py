@@ -16,6 +16,10 @@ def ctx():
     )
 
 
+def fields_for(embed, name: str) -> str:
+    return next(str(f.value) for f in embed.fields if f.name == name)
+
+
 def _text(embed) -> str:
     """Flatten an embed so a test can assert on everything it displays."""
     parts = [embed.title or "", embed.description or ""]
@@ -73,6 +77,18 @@ def test_waiver_claim_shows_the_faab_bid(ctx):
     assert "Waiver Claim" in embed.title
     assert "$27" in text
     assert "Kyler Murray" in text
+
+
+def test_priority_waiver_renders_without_a_faab_field(ctx):
+    """Leagues on waiver priority send no waiver_bid — don't invent a "$0" bid."""
+    embed = render_transaction(fixtures.PRIORITY_WAIVER, ctx, "Test League")
+    text = _text(embed)
+
+    assert "Waiver Claim" in embed.title
+    assert "Travis Kelce" in text
+    assert "Patrick Mahomes" in text
+    assert "FAAB" not in text
+    assert "$" not in text
 
 
 def test_failed_claim_explains_why(ctx):
@@ -133,6 +149,26 @@ def test_buying_back_your_own_pick_is_not_annotated(ctx):
     )
     pick_line = next(line for line in received.splitlines() if "round pick" in line)
     assert pick_line == "• 2027 2nd round pick"
+
+
+def test_picks_only_trade_renders_with_no_players(ctx):
+    """Dynasty leagues trade pure pick packages; `adds` is empty on those."""
+    embed = render_transaction(fixtures.PICKS_ONLY_TRADE, ctx, "Test League")
+    fields = {field.name: str(field.value) for field in embed.fields}
+
+    assert "Hurts Donut receives" in fields
+    assert "marcus99 receives" in fields
+    assert "2027 1st round pick" in fields["Hurts Donut receives"]
+    assert "2028 2nd round pick" in fields["Hurts Donut receives"]
+    assert "2027 2nd round pick" in fields["marcus99 receives"]
+
+
+def test_pick_ordinals_past_tenth_are_correct(ctx):
+    """A 23-round startup means 11th/12th/13th ordinals actually come up."""
+    embed = render_transaction(fixtures.PICKS_ONLY_TRADE, ctx, "Test League")
+    received = fields_for(embed, "marcus99 receives")
+    assert "2027 11th round pick" in received
+    assert "11st" not in received and "11nd" not in received
 
 
 def test_trade_includes_faab(ctx):

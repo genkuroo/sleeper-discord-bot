@@ -81,6 +81,20 @@ WAIVER_CLAIM = {
     "settings": {"waiver_bid": 27, "seq": 3},
 }
 
+# A league on waiver priority (waiver_type 0) rather than FAAB (waiver_type 2)
+# produces claims with no waiver_bid at all — the budget field in league
+# settings is an unused default there.
+PRIORITY_WAIVER = {
+    "transaction_id": "t-waiver-priority",
+    "type": "waiver",
+    "status": "complete",
+    "status_updated": NOW_MS - 125_000,
+    "roster_ids": [1],
+    "adds": {"1234": 1},
+    "drops": {"4046": 1},
+    "settings": {"seq": 1},
+}
+
 FAILED_WAIVER = {
     "transaction_id": "t-waiver-failed",
     "type": "waiver",
@@ -117,6 +131,25 @@ TRADE = {
         {"season": "2027", "round": 3, "roster_id": 1, "previous_owner_id": 1, "owner_id": 2},
     ],
     "waiver_budget": [{"sender": 1, "receiver": 2, "amount": 15}],
+}
+
+# Dynasty leagues trade picks with no players attached at all, often across
+# several future seasons at once. The transaction then has an empty `adds`.
+PICKS_ONLY_TRADE = {
+    "transaction_id": "t-trade-picks",
+    "type": "trade",
+    "status": "complete",
+    "status_updated": NOW_MS - 40_000,
+    "roster_ids": [1, 3],
+    "adds": None,
+    "drops": None,
+    "draft_picks": [
+        {"season": "2027", "round": 1, "roster_id": 3, "previous_owner_id": 3, "owner_id": 1},
+        {"season": "2028", "round": 2, "roster_id": 3, "previous_owner_id": 3, "owner_id": 1},
+        {"season": "2027", "round": 2, "roster_id": 1, "previous_owner_id": 1, "owner_id": 3},
+        {"season": "2027", "round": 11, "roster_id": 2, "previous_owner_id": 1, "owner_id": 3},
+    ],
+    "waiver_budget": [],
 }
 
 DROP_ONLY = {

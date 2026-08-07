@@ -1,8 +1,10 @@
 # sleeper-discord-bot
 
 A Discord bot that posts your Sleeper fantasy football league's transactions
-into your league's chat channel the moment they happen — waiver claims with the
-FAAB bid, free agent pickups, drops, and trades broken down by who got what.
+into your league's chat channel the moment they happen — waiver claims, free
+agent pickups, drops, and trades broken down by who got what. In FAAB leagues
+the winning bid is shown; leagues on waiver priority send no bid, and the alert
+simply omits it.
 
 It also answers slash commands, so nobody has to leave Discord to check
 standings or a roster.
@@ -180,7 +182,7 @@ pip install pytest pytest-asyncio
 pytest
 ```
 
-57 tests, no network and no Discord connection. They cover the announcement
+60 tests, no network and no Discord connection. They cover the announcement
 rules (what posts, what stays quiet), the rendering of every transaction shape
 including third-party draft picks and Discord's 1024-character field limit, and
 full poll cycles against a stubbed API — including that a restart with an

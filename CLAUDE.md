@@ -52,12 +52,16 @@ so the interesting rules stay testable as plain functions.
 - A draft pick carries three roster ids: `roster_id` (whose pick it originally
   is), `previous_owner_id`, and `owner_id` (who has it now).
 - Scores split into `fpts` and `fpts_decimal` (hundredths).
+- `settings.waiver_bid` on a transaction only exists in FAAB leagues
+  (`waiver_type: 2`). On waiver priority (`waiver_type: 0`) it is absent even
+  though the league still carries a default `waiver_budget` — so the bid field
+  must stay conditional rather than defaulting to `$0`.
 - Sleeper returns `200` with a `null` body for empty resources, not `404`.
 
 ## Testing changes
 
 ```bash
-pytest                                  # 57 tests, no network
+pytest                                  # 60 tests, no network
 python scripts/preview.py               # render sample alerts to the terminal
 python scripts/preview.py --league <id> # render a real league, read-only
 ```
