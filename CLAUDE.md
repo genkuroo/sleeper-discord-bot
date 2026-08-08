@@ -80,6 +80,14 @@ so the interesting rules stay testable as plain functions.
   though the league still carries a default `waiver_budget` — so the bid field
   must stay conditional rather than defaulting to `$0`.
 - Sleeper returns `200` with a `null` body for empty resources, not `404`.
+- **A league's id changes every season.** Sleeper creates a new `league_id` on
+  rollover and links back via `previous_league_id`. Anything pinned to one id —
+  which is this whole bot — silently stops seeing activity when that happens.
+- A traded pick carries no slot number. `{season, round, roster_id}` only. The
+  slot comes from inverting `slot_to_roster_id` on that season's draft object,
+  and is meaningless until `draft_order` is populated — before that it is an
+  identity placeholder, not a real order. A future season's draft does not
+  exist yet at all, and when it does it hangs off the next league id.
 
 ## Testing changes
 

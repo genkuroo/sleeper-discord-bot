@@ -246,5 +246,14 @@ existing database posts nothing.
 - **Polling, not push.** Sleeper has no webhooks, so alerts land within
   `POLL_SECONDS`.
 - **One league per instance.** Run a second container for a second league.
+- **A dynasty league gets a new id every season.** Sleeper rolls a league into a
+  fresh `league_id` each year rather than reusing it. When that happens,
+  `SLEEPER_LEAGUE_ID` must be updated or the bot keeps polling the finished
+  season and simply goes quiet — no error, no alerts. The new id is reachable
+  from the new league's `previous_league_id`, which points back at the old one.
+- **Traded draft picks show a round, not a slot.** A transaction carries only
+  season, round and the pick's original owner — never "1.01". The slot lives on
+  the draft object for that season, which for a future rookie draft does not
+  exist yet, and once it does it belongs to the *next* season's league id.
 - **Alerts are transactions only.** Matchup results and live draft picks are
   deliberately not implemented — `/matchup` covers scores on demand.
