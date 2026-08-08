@@ -19,6 +19,10 @@ from .league import LeagueContext
 # render identically on every client, so that is how add and drop are marked.
 MARKER_ADD = "🟢"
 MARKER_DROP = "🔴"
+# Picks and budget get their own markers so a dynasty column that is mostly
+# picks is still scannable against the players in it.
+MARKER_PICK = "🎟️"
+MARKER_FAAB = "💵"
 
 # The event type lives in the description as a `##` header rather than in the
 # embed's own title, because a description header renders *larger* than the
@@ -176,18 +180,26 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
     for pick in picks:
         receiver = pick.get("owner_id")
         origin = pick.get("roster_id")
-        label = f"{pick.get('season')} {_ordinal(pick.get('round'))} round pick"
-        # A pick that did not originate with the team receiving it is worth
-        # naming — "2027 1st (from Jake)" is the detail leagues argue about.
+        # "2027 1st" is how dynasty managers actually write it; "round pick" is
+        # filler that pushes the line onto two rows in a narrow column.
+        label = f"{MARKER_PICK} {pick.get('season')} {_ordinal(pick.get('round'))}"
+        # Whose pick it originally was is the detail leagues argue about, and it
+        # can be a third team that is not even part of this trade.
         if origin is not None and origin != receiver:
-            label += f" (from {ctx.team_name(origin)})"
+            label += f" · {ctx.team_name(origin)}"
         incoming.setdefault(receiver, []).append(label)
+
+    # In a two-team trade the sender is necessarily the other side, so naming
+    # them adds nothing — and worse, it reads like the pick annotation above,
+    # where the name means "whose pick", not "who sent it".
+    name_the_sender = len(txn.get("roster_ids") or []) > 2
 
     for entry in budget:
         receiver = entry.get("receiver")
-        amount = entry.get("amount")
-        sender = ctx.team_name(entry.get("sender"))
-        incoming.setdefault(receiver, []).append(f"${amount} FAAB (from {sender})")
+        label = f"{MARKER_FAAB} ${entry.get('amount')} FAAB"
+        if name_the_sender:
+            label += f" · from {ctx.team_name(entry.get('sender'))}"
+        incoming.setdefault(receiver, []).append(label)
 
     if not incoming:
         return None

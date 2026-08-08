@@ -307,7 +307,7 @@ def test_trade_names_the_original_owner_of_a_third_party_pick(ctx):
     received = next(
         str(f.value) for f in embed.fields if f.name == "Hurts Donut"
     )
-    assert "2027 1st round pick (from marcus99)" in received
+    assert "🎟️ 2027 1st · marcus99" in received
 
 
 def test_trade_annotates_a_pick_with_whose_pick_it_is(ctx):
@@ -316,8 +316,8 @@ def test_trade_annotates_a_pick_with_whose_pick_it_is(ctx):
     received = next(
         str(f.value) for f in embed.fields if f.name == "Kupp Noodles"
     )
-    pick_line = next(line for line in received.splitlines() if "round pick" in line)
-    assert pick_line == "2027 3rd round pick (from Hurts Donut)"
+    pick_line = next(line for line in received.splitlines() if "🎟️" in line)
+    assert pick_line == "🎟️ 2027 3rd · Hurts Donut"
 
 
 def test_buying_back_your_own_pick_is_not_annotated(ctx):
@@ -330,8 +330,8 @@ def test_buying_back_your_own_pick_is_not_annotated(ctx):
     received = next(
         str(f.value) for f in embed.fields if f.name == "Hurts Donut"
     )
-    pick_line = next(line for line in received.splitlines() if "round pick" in line)
-    assert pick_line == "2027 2nd round pick"
+    pick_line = next(line for line in received.splitlines() if "🎟️" in line)
+    assert pick_line == "🎟️ 2027 2nd"
 
 
 def test_picks_only_trade_renders_with_no_players(ctx):
@@ -341,16 +341,16 @@ def test_picks_only_trade_renders_with_no_players(ctx):
 
     assert "Hurts Donut" in fields
     assert "marcus99" in fields
-    assert "2027 1st round pick" in fields["Hurts Donut"]
-    assert "2028 2nd round pick" in fields["Hurts Donut"]
-    assert "2027 2nd round pick" in fields["marcus99"]
+    assert "🎟️ 2027 1st" in fields["Hurts Donut"]
+    assert "🎟️ 2028 2nd" in fields["Hurts Donut"]
+    assert "🎟️ 2027 2nd" in fields["marcus99"]
 
 
 def test_pick_ordinals_past_tenth_are_correct(ctx):
     """A 23-round startup means 11th/12th/13th ordinals actually come up."""
     embed = render_transaction(fixtures.PICKS_ONLY_TRADE, ctx, "Test League")
     received = fields_for(embed, "marcus99")
-    assert "2027 11th round pick" in received
+    assert "🎟️ 2027 11th" in received
     assert "11st" not in received and "11nd" not in received
 
 
@@ -359,7 +359,25 @@ def test_trade_includes_faab(ctx):
     received = next(
         str(f.value) for f in embed.fields if f.name == "Kupp Noodles"
     )
-    assert "$15 FAAB (from Hurts Donut)" in received
+    assert "💵 $15 FAAB" in received
+    # Two teams, so the sender can only be the other one. Naming them would
+    # also read like the pick lines, where the name means "whose pick".
+    assert "Hurts Donut" not in received.splitlines()[-1]
+
+
+def test_faab_names_its_sender_only_in_a_multi_team_trade(ctx):
+    """With three teams, "who sent this" stops being obvious."""
+    three_way = dict(
+        fixtures.TRADE,
+        roster_ids=[1, 2, 3],
+        adds={"4034": 1, "6794": 2},
+        draft_picks=[],
+        waiver_budget=[{"sender": 3, "receiver": 2, "amount": 15}],
+    )
+    embed = render_transaction(three_way, ctx, "Test League")
+    received = fields_for(embed, "Kupp Noodles")
+
+    assert "💵 $15 FAAB · from marcus99" in received
 
 
 # -- embed limits ---------------------------------------------------------
