@@ -11,7 +11,7 @@ import time
 import pytest
 
 from sleeperbot.poller import dedupe, is_announceable, select_new, weeks_to_scan
-from tests import fixtures
+from sleeperbot import samples as fixtures
 
 
 def _select(transactions, known=None, **kwargs):

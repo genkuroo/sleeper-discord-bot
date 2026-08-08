@@ -12,7 +12,7 @@ import pytest
 
 from sleeperbot.bot import SleeperBot
 from sleeperbot.config import Config
-from tests import fixtures
+from sleeperbot import samples as fixtures
 
 
 class FakeSleeper:

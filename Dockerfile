@@ -16,7 +16,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY sleeperbot/ ./sleeperbot/
-COPY scripts/healthcheck.py ./scripts/
+# The whole scripts/ dir, not just the healthcheck: preview.py and smoke_post.py
+# are how you diagnose a deployment from inside the container. Tests are not
+# copied — the sample payloads they share live in the package instead.
+COPY scripts/ ./scripts/
 
 # Run unprivileged, and create /data in the image so the named volume inherits
 # an ownership the bot can actually write its SQLite state into.

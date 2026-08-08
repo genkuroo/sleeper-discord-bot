@@ -1,8 +1,14 @@
-"""Sample payloads shaped exactly like Sleeper's, for tests and the preview.
+"""Sample payloads shaped exactly like Sleeper's.
 
 Field names and nesting here match the live API — draft picks really do carry
 three different roster ids, and scores really are split into whole and decimal
 fields — so anything that renders these renders the real thing.
+
+This lives in the package rather than under `tests/` because it has three
+consumers, only one of which is the test suite: `scripts/preview.py` renders it
+to the terminal, and `scripts/smoke_post.py` posts it to a Discord channel to
+prove a deployment works. Shipping it in the image is what lets the smoke test
+run inside the container, without shipping the tests themselves.
 """
 
 from __future__ import annotations

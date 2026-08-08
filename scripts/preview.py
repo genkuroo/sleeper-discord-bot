@@ -63,7 +63,7 @@ def show_teams(ctx) -> None:
 
 
 def preview_fixtures() -> None:
-    from tests import fixtures
+    from sleeperbot import samples as fixtures
 
     ctx = LeagueContext(
         rosters=fixtures.ROSTERS, users=fixtures.USERS, players=fixtures.PLAYERS

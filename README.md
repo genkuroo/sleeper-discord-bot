@@ -133,7 +133,34 @@ pip install -r requirements.txt
 python -m sleeperbot
 ```
 
-### 4. Deploy to the Pi
+### 4. Check the setup before pointing it at your league
+
+The bot is silent by design — it posts only when the league does something. That
+makes a first deploy genuinely hard to judge, because an empty channel looks the
+same whether everything works or the channel id is wrong. Worse, in the
+preseason there may be no transactions for weeks.
+
+So check the wiring directly. Point `DISCORD_GUILD_ID` and `DISCORD_CHANNEL_ID`
+at a **test server** first:
+
+```bash
+python scripts/smoke_post.py           # connect and report, post nothing
+python scripts/smoke_post.py --post    # also send sample alerts
+```
+
+It reports the guild and channel it resolved, checks the three permissions the
+bot cannot work without, lists any registered slash commands, and with `--post`
+sends the sample transactions so you can see real embeds in a real channel. It
+never opens the SQLite store, so it cannot mark a genuine transaction as already
+announced.
+
+It also runs inside the container, which is the more useful form once deployed:
+
+```bash
+docker compose run --rm sleeper-bot python scripts/smoke_post.py
+```
+
+### 5. Deploy to the Pi
 
 This repo is one of the app repos orchestrated by
 [`homelab-pi`](../homelab-pi), which builds it from `../sleeper-discord-bot`:

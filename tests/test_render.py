@@ -6,7 +6,7 @@ import pytest
 
 from sleeperbot.league import LeagueContext
 from sleeperbot.render import render_transaction
-from tests import fixtures
+from sleeperbot import samples as fixtures
 
 
 @pytest.fixture
