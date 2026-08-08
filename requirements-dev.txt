@@ -1,0 +1,6 @@
+# Test-only dependencies. Kept out of requirements.txt so the runtime image
+# doesn't ship a test runner. Pinned to the versions the suite is known to pass
+# on, so CI failing means the code changed rather than a tool did.
+-r requirements.txt
+pytest==9.1.1
+pytest-asyncio==1.4.0

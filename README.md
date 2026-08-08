@@ -1,5 +1,7 @@
 # sleeper-discord-bot
 
+[![CI](https://github.com/genkuroo/sleeper-discord-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/genkuroo/sleeper-discord-bot/actions/workflows/ci.yml)
+
 A Discord bot that posts your Sleeper fantasy football league's transactions
 into your league's chat channel the moment they happen — waiver claims, free
 agent pickups, drops, and trades broken down by who got what. In FAAB leagues
@@ -178,7 +180,7 @@ history silently and starts fresh.
 ## Tests
 
 ```bash
-pip install pytest pytest-asyncio
+pip install -r requirements-dev.txt
 pytest
 ```
 
