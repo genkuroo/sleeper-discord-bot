@@ -8,6 +8,29 @@ A Discord bot that announces Sleeper fantasy football transactions in a league's
 Discord channel, plus a few read-only slash commands. Deployed as one container
 in the `homelab-pi` stack (build context `../sleeper-discord-bot`).
 
+## The governing rule — never show what Sleeper doesn't
+
+**The bot mirrors what a league member can already see in the Sleeper app. If
+Sleeper hides it from other managers, this bot must not publish it to a channel
+they are all reading.**
+
+Critically, **the public API is not the boundary.** It is unauthenticated and
+returns things the app deliberately withholds, so "the endpoint returned it" is
+never justification for displaying it. Check what a manager sees in Sleeper.
+
+Worked examples:
+
+- **Winning waiver bid** — in Sleeper's transaction log, so it is shown.
+- **Failed waiver claims and their bid amounts** — Sleeper shows a failed claim
+  only to the manager who made it. The API returns everyone's. This is why
+  `ALERT_FAILED_WAIVERS` defaults off: switching it on publishes losing bids and
+  leaks how managers value players. Treat it as a leak, not a noise setting.
+- **Pending (`processing`) claims** — not visible to anyone until waivers run,
+  and posting one would spoil a bid before it resolves.
+
+Before adding any new field to an alert, ask where a manager sees it in the app.
+If the answer is "they don't", do not add it.
+
 ## Invariants — don't break these
 
 - **Never announce a transaction twice.** The SQLite store in `DATA_DIR` is the

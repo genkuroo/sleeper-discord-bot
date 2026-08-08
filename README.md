@@ -75,11 +75,17 @@ from the next real move.
 was unplugged overnight comes back and stays quiet about what the league
 already knows, instead of narrating yesterday.
 
-**Pending waivers are never announced.** A claim sitting in `processing` has not
-happened yet, and posting it would leak someone's bid before waivers run. Only
-`complete` transactions post — failed ones are available behind
-`ALERT_FAILED_WAIVERS=1`, off by default because on a contested player every
-losing bid is its own event and it buries the actual news.
+**It never shows what Sleeper doesn't.** The bot mirrors what a league member
+can already see in the app — and the public API is *not* that boundary. Being
+unauthenticated, it hands back things Sleeper deliberately withholds, so
+"the endpoint returned it" is never a reason to display it.
+
+That rule decides two behaviours. A claim sitting in `processing` is never
+announced: it has not happened yet, and posting it would spoil someone's bid
+before waivers run. And failed claims are off by default — Sleeper shows a
+failed claim only to the manager who made it, so `ALERT_FAILED_WAIVERS=1`
+publishes losing bids and reveals how managers value players. It's a leak, not
+a noise setting.
 
 ### Caching
 
