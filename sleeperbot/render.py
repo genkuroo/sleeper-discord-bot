@@ -32,6 +32,16 @@ DIVIDER = "━━━━━━━━━━━━━━━━━━"
 TRADE_ARROW = "⇄"
 MAX_TRADE_COLUMNS = 3
 
+# A short rule under each team name, drawn inside the field value. The team
+# name itself stays in the field *name*: field names render bold natively, and
+# markdown headers are ignored in both field names and field values, so moving
+# the name into the value would only make it smaller.
+COLUMN_RULE = "▬▬▬▬▬▬"
+
+# Discord rejects an empty field value, so the separator column holds a
+# zero-width space instead of nothing.
+ZERO_WIDTH = "​"
+
 COLOR_ADD = 0x2ECC71  # green
 COLOR_DROP = 0xE67E22  # orange — a drop with no add is not good news
 COLOR_TRADE = 0x5865F2  # blurple
@@ -197,13 +207,12 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
 
     for index, roster_id in enumerate(rosters):
         if columns and len(rosters) == 2 and index == 1:
-            # Zero-width space: Discord rejects an empty field value, but the
-            # separator column should look empty under its arrow.
-            embed.add_field(name=TRADE_ARROW, value="​", inline=True)
+            embed.add_field(name=TRADE_ARROW, value=ZERO_WIDTH, inline=True)
 
+        body = "\n".join([COLUMN_RULE, *incoming[roster_id]])
         embed.add_field(
             name=ctx.team_name(roster_id),
-            value=_truncate("\n".join(incoming[roster_id])),
+            value=_truncate(body),
             inline=columns,
         )
     return embed

@@ -72,3 +72,22 @@ real payload's field names, plus a render test asserting on the embed text.
 Discord limits worth remembering: 10 embeds per message, 25 fields per embed,
 1024 characters per field value, 25 autocomplete choices. Exceeding any of them
 rejects the whole message.
+
+## Discord rendering, verified by posting rather than assumed
+
+- **Markdown headers (`#`/`##`/`###`) work in an embed *description* only.**
+  They are ignored in field names and field values, which render the literal
+  hashes. This was tested live — do not "tidy up" a field by adding one.
+- A `##` header in the description renders *larger* than the embed's own
+  `title`, which is why the event type lives there and `title` is unused.
+- **There is no horizontal-rule markdown.** `---` does not become a line, so
+  dividers are drawn with box characters (`━`, `▬`).
+- **Embeds cannot colour arbitrary text.** Only an ANSI code block can, and it
+  renders grey and monospaced on mobile. Coloured emoji are the portable way.
+- **Only four image slots exist**, none per-field: author icon, thumbnail (top
+  right), image (bottom, full width), footer icon. Per-team images need
+  Components V2 sections (accessory renders on the right) or custom emoji.
+- **Inline fields collapse to full width on narrow screens**, so column layouts
+  degrade to stacked lists on phones.
+- Passing `discord.utils.MISSING` for `icon_url` serialises the string `"..."`
+  rather than omitting the field. Omit the argument instead.

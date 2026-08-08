@@ -247,6 +247,27 @@ def test_the_arrow_column_is_not_empty(ctx):
     assert arrow.value
 
 
+def test_each_team_column_has_a_rule_under_its_name(ctx):
+    embed = render_transaction(fixtures.TRADE, ctx, "Test League")
+    column = fields_for(embed, "Hurts Donut")
+
+    assert column.splitlines()[0] == "▬▬▬▬▬▬"
+
+
+def test_team_names_never_use_markdown_headers(ctx):
+    """Discord ignores headers in embed field names AND values — verified live.
+
+    Leaving a `###` in either place renders the literal hashes, so this guards
+    against someone reintroducing them from the description code, where they do
+    work.
+    """
+    embed = render_transaction(fixtures.TRADE, ctx, "Test League")
+
+    for field in embed.fields:
+        assert not field.name.startswith("#")
+        assert "###" not in str(field.value)
+
+
 def test_a_big_multi_team_trade_stacks_instead_of_columning(ctx):
     """Four columns are too narrow to read, so those go full width."""
     four_way = dict(
