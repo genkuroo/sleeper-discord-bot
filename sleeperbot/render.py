@@ -26,6 +26,12 @@ MARKER_DROP = "🔴"
 # is drawn with box characters.
 DIVIDER = "━━━━━━━━━━━━━━━━━━"
 
+# Trades read as columns of what each side received, with an arrow between the
+# two-team case. Note Discord collapses inline fields to full width on narrow
+# screens, so this degrades to a stacked list on phones rather than breaking.
+TRADE_ARROW = "⇄"
+MAX_TRADE_COLUMNS = 3
+
 COLOR_ADD = 0x2ECC71  # green
 COLOR_DROP = 0xE67E22  # orange — a drop with no add is not good news
 COLOR_TRADE = 0x5865F2  # blurple
@@ -181,11 +187,24 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
         incoming.setdefault(roster_id, ["*Nothing*"])
 
     embed = discord.Embed(description=_heading("🔁 Trade"), color=COLOR_TRADE)
-    for roster_id in sorted(incoming):
+    rosters = sorted(incoming)
+
+    # Discord fits three inline fields to a row, so a two-team trade reads as
+    # two columns with a separator between them. Three still fits as three
+    # columns; beyond that the columns get too narrow to read and stacking
+    # full-width rows is clearer.
+    columns = len(rosters) <= MAX_TRADE_COLUMNS
+
+    for index, roster_id in enumerate(rosters):
+        if columns and len(rosters) == 2 and index == 1:
+            # Zero-width space: Discord rejects an empty field value, but the
+            # separator column should look empty under its arrow.
+            embed.add_field(name=TRADE_ARROW, value="​", inline=True)
+
         embed.add_field(
-            name=f"{ctx.team_name(roster_id)} receives",
-            value=_truncate("\n".join(f"• {item}" for item in incoming[roster_id])),
-            inline=False,
+            name=ctx.team_name(roster_id),
+            value=_truncate("\n".join(incoming[roster_id])),
+            inline=columns,
         )
     return embed
 

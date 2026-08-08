@@ -226,17 +226,65 @@ def test_trade_lists_what_each_team_receives(ctx):
     embed = render_transaction(fixtures.TRADE, ctx, "Test League")
     fields = {field.name: str(field.value) for field in embed.fields}
 
-    assert "Hurts Donut receives" in fields
-    assert "Kupp Noodles receives" in fields
-    assert "Christian McCaffrey" in fields["Hurts Donut receives"]
-    assert "Justin Jefferson" in fields["Kupp Noodles receives"]
+    assert "Hurts Donut" in fields
+    assert "Kupp Noodles" in fields
+    assert "Christian McCaffrey" in fields["Hurts Donut"]
+    assert "Justin Jefferson" in fields["Kupp Noodles"]
+
+
+def test_a_two_team_trade_reads_as_two_columns_with_an_arrow(ctx):
+    embed = render_transaction(fixtures.TRADE, ctx, "Test League")
+    names = [f.name for f in embed.fields]
+
+    assert names == ["Hurts Donut", "⇄", "Kupp Noodles"]
+    assert all(f.inline for f in embed.fields)
+
+
+def test_the_arrow_column_is_not_empty(ctx):
+    """Discord rejects a field with an empty value outright."""
+    embed = render_transaction(fixtures.TRADE, ctx, "Test League")
+    arrow = next(f for f in embed.fields if f.name == "⇄")
+    assert arrow.value
+
+
+def test_a_big_multi_team_trade_stacks_instead_of_columning(ctx):
+    """Four columns are too narrow to read, so those go full width."""
+    four_way = dict(
+        fixtures.TRADE,
+        adds={"9509": 1, "1466": 2, "4034": 3, "6794": 4},
+        drops=None,
+        draft_picks=[],
+        waiver_budget=[],
+        roster_ids=[1, 2, 3, 4],
+    )
+    embed = render_transaction(four_way, ctx, "Test League")
+
+    assert not any(f.inline for f in embed.fields)
+    assert "⇄" not in [f.name for f in embed.fields]
+
+
+def test_a_three_team_trade_still_fits_as_columns(ctx):
+    """Discord fits three inline fields to a row exactly."""
+    three_way = dict(
+        fixtures.TRADE,
+        adds={"9509": 1, "1466": 2, "4034": 3},
+        drops=None,
+        draft_picks=[],
+        waiver_budget=[],
+        roster_ids=[1, 2, 3],
+    )
+    embed = render_transaction(three_way, ctx, "Test League")
+
+    assert all(f.inline for f in embed.fields)
+    # No separator: a third column would push it onto a second row.
+    assert "⇄" not in [f.name for f in embed.fields]
 
 
 def test_trade_names_the_original_owner_of_a_third_party_pick(ctx):
     """"2027 1st (from marcus99)" is the detail leagues actually argue about."""
     embed = render_transaction(fixtures.TRADE, ctx, "Test League")
     received = next(
-        str(f.value) for f in embed.fields if f.name == "Hurts Donut receives"
+        str(f.value) for f in embed.fields if f.name == "Hurts Donut"
     )
     assert "2027 1st round pick (from marcus99)" in received
 
@@ -245,10 +293,10 @@ def test_trade_annotates_a_pick_with_whose_pick_it_is(ctx):
     """Roster 1's own 2027 3rd going to roster 2 is "from Hurts Donut"."""
     embed = render_transaction(fixtures.TRADE, ctx, "Test League")
     received = next(
-        str(f.value) for f in embed.fields if f.name == "Kupp Noodles receives"
+        str(f.value) for f in embed.fields if f.name == "Kupp Noodles"
     )
     pick_line = next(line for line in received.splitlines() if "round pick" in line)
-    assert pick_line == "• 2027 3rd round pick (from Hurts Donut)"
+    assert pick_line == "2027 3rd round pick (from Hurts Donut)"
 
 
 def test_buying_back_your_own_pick_is_not_annotated(ctx):
@@ -259,10 +307,10 @@ def test_buying_back_your_own_pick_is_not_annotated(ctx):
     ]
     embed = render_transaction(buyback, ctx, "Test League")
     received = next(
-        str(f.value) for f in embed.fields if f.name == "Hurts Donut receives"
+        str(f.value) for f in embed.fields if f.name == "Hurts Donut"
     )
     pick_line = next(line for line in received.splitlines() if "round pick" in line)
-    assert pick_line == "• 2027 2nd round pick"
+    assert pick_line == "2027 2nd round pick"
 
 
 def test_picks_only_trade_renders_with_no_players(ctx):
@@ -270,17 +318,17 @@ def test_picks_only_trade_renders_with_no_players(ctx):
     embed = render_transaction(fixtures.PICKS_ONLY_TRADE, ctx, "Test League")
     fields = {field.name: str(field.value) for field in embed.fields}
 
-    assert "Hurts Donut receives" in fields
-    assert "marcus99 receives" in fields
-    assert "2027 1st round pick" in fields["Hurts Donut receives"]
-    assert "2028 2nd round pick" in fields["Hurts Donut receives"]
-    assert "2027 2nd round pick" in fields["marcus99 receives"]
+    assert "Hurts Donut" in fields
+    assert "marcus99" in fields
+    assert "2027 1st round pick" in fields["Hurts Donut"]
+    assert "2028 2nd round pick" in fields["Hurts Donut"]
+    assert "2027 2nd round pick" in fields["marcus99"]
 
 
 def test_pick_ordinals_past_tenth_are_correct(ctx):
     """A 23-round startup means 11th/12th/13th ordinals actually come up."""
     embed = render_transaction(fixtures.PICKS_ONLY_TRADE, ctx, "Test League")
-    received = fields_for(embed, "marcus99 receives")
+    received = fields_for(embed, "marcus99")
     assert "2027 11th round pick" in received
     assert "11st" not in received and "11nd" not in received
 
@@ -288,7 +336,7 @@ def test_pick_ordinals_past_tenth_are_correct(ctx):
 def test_trade_includes_faab(ctx):
     embed = render_transaction(fixtures.TRADE, ctx, "Test League")
     received = next(
-        str(f.value) for f in embed.fields if f.name == "Kupp Noodles receives"
+        str(f.value) for f in embed.fields if f.name == "Kupp Noodles"
     )
     assert "$15 FAAB (from Hurts Donut)" in received
 
