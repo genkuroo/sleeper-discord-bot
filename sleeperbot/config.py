@@ -15,6 +15,35 @@ class ConfigError(RuntimeError):
     """Raised at startup when required configuration is missing or unusable."""
 
 
+def load_dotenv(path: str = ".env") -> None:
+    """Read a `.env` file into the environment, if one exists.
+
+    Docker Compose loads `.env` on its own, so this exists for running the bot
+    or the scripts directly — `python -m sleeperbot`, `scripts/smoke_post.py` —
+    where nothing else would. Written by hand rather than pulling in
+    python-dotenv for fifteen lines.
+
+    A real environment variable always wins, so `DISCORD_CHANNEL_ID=123 python
+    -m sleeperbot` can override the file for a one-off test without editing it.
+    """
+    if not os.path.isfile(path):
+        return
+
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            # Tolerate quoted values; a token pasted with quotes is a plausible
+            # mistake and an unhelpful one to debug.
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            os.environ.setdefault(key, value)
+
+
 def _require(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -68,6 +97,7 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
+        load_dotenv()
         return cls(
             discord_token=_require("DISCORD_TOKEN"),
             guild_id=_require_int("DISCORD_GUILD_ID"),

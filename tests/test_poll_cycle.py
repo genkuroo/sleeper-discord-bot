@@ -75,6 +75,7 @@ def make_bot(monkeypatch, tmp_path):
     created = []
 
     def _make(transactions, **overrides):
+        monkeypatch.chdir(tmp_path)  # keep a real .env out of the test
         monkeypatch.setenv("DISCORD_TOKEN", "fake-token")
         monkeypatch.setenv("DISCORD_GUILD_ID", "123")
         monkeypatch.setenv("DISCORD_CHANNEL_ID", "456")

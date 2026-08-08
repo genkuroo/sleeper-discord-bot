@@ -7,11 +7,13 @@ command that never got registered, a task loop that isn't bound to the instance
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from sleeperbot import commands as slash_commands
 from sleeperbot.bot import SleeperBot
-from sleeperbot.config import Config, ConfigError
+from sleeperbot.config import Config, ConfigError, load_dotenv
 from sleeperbot.store import Store
 
 EXPECTED_COMMANDS = ["matchup", "roster", "standings", "trades"]
@@ -19,6 +21,9 @@ EXPECTED_COMMANDS = ["matchup", "roster", "standings", "trades"]
 
 @pytest.fixture
 def env(monkeypatch, tmp_path):
+    # Config.from_env() reads a .env from the working directory. Run from an
+    # empty one so a developer's real .env can never leak into a test.
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DISCORD_TOKEN", "fake-token")
     monkeypatch.setenv("DISCORD_GUILD_ID", "123")
     monkeypatch.setenv("DISCORD_CHANNEL_ID", "456")
@@ -40,6 +45,7 @@ def bot(env):
 
 def test_missing_required_setting_fails_fast(monkeypatch, tmp_path):
     """Better to refuse to start than to crash-loop under restart: unless-stopped."""
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DISCORD_TOKEN", raising=False)
     monkeypatch.setenv("DISCORD_GUILD_ID", "123")
     with pytest.raises(ConfigError, match="DISCORD_TOKEN"):
@@ -65,6 +71,53 @@ def test_defaults_are_applied(env, monkeypatch):
 def test_failed_waiver_flag_parsing(env, monkeypatch, value, expected):
     monkeypatch.setenv("ALERT_FAILED_WAIVERS", value)
     assert Config.from_env().alert_failed_waivers is expected
+
+
+# -- .env loading ---------------------------------------------------------
+
+
+def test_dotenv_is_read(monkeypatch, tmp_path):
+    """Compose reads .env on its own; running directly needs this."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("SLEEPER_LEAGUE_ID", raising=False)
+    (tmp_path / ".env").write_text("SLEEPER_LEAGUE_ID=12345\n")
+
+    load_dotenv()
+    assert os.environ["SLEEPER_LEAGUE_ID"] == "12345"
+
+
+def test_a_real_env_var_beats_the_file(monkeypatch, tmp_path):
+    """So `FOO=bar python -m sleeperbot` overrides for a one-off test."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SLEEPER_LEAGUE_ID", "from-environment")
+    (tmp_path / ".env").write_text("SLEEPER_LEAGUE_ID=from-file\n")
+
+    load_dotenv()
+    assert os.environ["SLEEPER_LEAGUE_ID"] == "from-environment"
+
+
+def test_dotenv_handles_comments_blanks_and_quotes(monkeypatch, tmp_path):
+    """A token pasted with quotes is a plausible mistake, and a painful one."""
+    monkeypatch.chdir(tmp_path)
+    for key in ("DISCORD_TOKEN", "POLL_SECONDS", "LOG_LEVEL"):
+        monkeypatch.delenv(key, raising=False)
+    (tmp_path / ".env").write_text(
+        '# a comment\n\nDISCORD_TOKEN="quoted-token"\n'
+        "POLL_SECONDS=60\n"
+        "   \n"
+        "LOG_LEVEL='DEBUG'\n"
+    )
+
+    load_dotenv()
+    assert os.environ["DISCORD_TOKEN"] == "quoted-token"
+    assert os.environ["POLL_SECONDS"] == "60"
+    assert os.environ["LOG_LEVEL"] == "DEBUG"
+
+
+def test_missing_dotenv_is_not_an_error(monkeypatch, tmp_path):
+    """The container has no .env — everything arrives as real env vars."""
+    monkeypatch.chdir(tmp_path)
+    load_dotenv()  # must not raise
 
 
 # -- bot assembly ---------------------------------------------------------
