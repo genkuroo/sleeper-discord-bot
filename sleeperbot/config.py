@@ -106,6 +106,10 @@ class Config:
             poll_seconds=_int("POLL_SECONDS", 300),
             max_backfill_hours=_int("MAX_BACKFILL_HOURS", 48),
             alert_failed_waivers=_bool("ALERT_FAILED_WAIVERS", False),
-            data_dir=os.environ.get("DATA_DIR", "/data").strip() or "/data",
+            # Relative by default so running directly on a laptop works. The
+            # container overrides it to /data via ENV in the Dockerfile, so the
+            # deployed path is unaffected — an absolute default would only mean
+            # a permission error at the filesystem root for local runs.
+            data_dir=os.environ.get("DATA_DIR", "./data").strip() or "./data",
             log_level=os.environ.get("LOG_LEVEL", "INFO").strip().upper() or "INFO",
         )
