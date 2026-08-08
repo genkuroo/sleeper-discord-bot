@@ -67,7 +67,11 @@ class FakeChannel(discord.abc.Messageable):
 
     @property
     def titles(self) -> list[str]:
-        return [embed.title for embed in self.embeds]
+        # The event type is a `##` header at the top of the description now.
+        return [
+            (e.description or "").splitlines()[0].removeprefix("## ").strip()
+            for e in self.embeds
+        ]
 
 
 @pytest.fixture

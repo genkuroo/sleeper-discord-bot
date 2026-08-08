@@ -35,9 +35,16 @@ def show(embed) -> None:
     """Approximate Discord's embed layout in the terminal."""
     if embed is None:
         return
-    print(f"  ┌─ {BOLD}{embed.title}{RESET}")
+    # The team is in the author slot and the event type is a header inside the
+    # description, so neither is in `title` any more.
+    if embed.author.name:
+        print(f"  ┌─ {CYAN}{embed.author.name}{RESET}")
+    elif embed.title:
+        print(f"  ┌─ {BOLD}{embed.title}{RESET}")
+    else:
+        print("  ┌─")
     for line in (embed.description or "").splitlines():
-        print(f"  │  {line}")
+        print(f"  │  {BOLD}{line}{RESET}" if line.startswith("## ") else f"  │  {line}")
     for field in embed.fields:
         print(f"  │  {CYAN}{field.name}{RESET}")
         for line in str(field.value).splitlines():

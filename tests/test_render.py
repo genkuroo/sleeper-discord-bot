@@ -20,9 +20,20 @@ def fields_for(embed, name: str) -> str:
     return next(str(f.value) for f in embed.fields if f.name == name)
 
 
+def heading(embed) -> str:
+    """The event type, which lives in the description as a `##` header."""
+    return (embed.description or "").splitlines()[0].removeprefix("## ").strip()
+
+
+def body(embed) -> str:
+    """Everything below the heading and its divider rule."""
+    lines = (embed.description or "").splitlines()
+    return "\n".join(lines[2:])
+
+
 def _text(embed) -> str:
     """Flatten an embed so a test can assert on everything it displays."""
-    parts = [embed.title or "", embed.description or ""]
+    parts = [embed.author.name or "", embed.description or ""]
     for field in embed.fields:
         parts.extend([field.name or "", str(field.value or "")])
     return "\n".join(parts)
@@ -64,17 +75,120 @@ def test_free_agent_add_shows_both_sides(ctx):
     embed = render_transaction(fixtures.FREE_AGENT_ADD, ctx, "Test League")
     text = _text(embed)
 
-    assert "Free Agent Pickup" in embed.title
+    assert "Free Agent Pickup" in heading(embed)
     assert "Hurts Donut" in text
-    assert "Bijan Robinson (RB – ATL)" in text
-    assert "San Francisco 49ers (DEF – SF)" in text
+    assert "Bijan Robinson" in text
+    assert "San Francisco 49ers" in text
+
+
+def test_a_drawn_divider_separates_the_heading_from_the_players(ctx):
+    """Discord has no horizontal-rule markdown, so the rule is box characters."""
+    embed = render_transaction(fixtures.FREE_AGENT_ADD, ctx, "Test League")
+    lines = embed.description.splitlines()
+
+    assert lines[0].startswith("## ")
+    assert set(lines[1]) == {"━"}
+    assert body(embed).startswith("🟢")
+
+
+def test_trades_get_the_same_heading_treatment(ctx):
+    """Every alert should read as the same family, whatever its shape."""
+    embed = render_transaction(fixtures.TRADE, ctx, "Test League")
+    lines = embed.description.splitlines()
+
+    assert lines[0] == "## 🔁 Trade"
+    assert set(lines[1]) == {"━"}
+
+
+def test_add_and_drop_get_coloured_markers(ctx):
+    """Embeds cannot colour text, so the marker emoji carry the colour."""
+    embed = render_transaction(fixtures.FREE_AGENT_ADD, ctx, "Test League")
+    lines = embed.description.splitlines()
+
+    added = next(line for line in lines if "Bijan Robinson" in line)
+    dropped = next(line for line in lines if "San Francisco" in line)
+
+    assert added.startswith("🟢")
+    assert dropped.startswith("🔴")
+
+
+def test_the_added_player_is_the_bold_one(ctx):
+    """Weight follows importance: the pickup is the news, the drop is context."""
+    embed = render_transaction(fixtures.FREE_AGENT_ADD, ctx, "Test League")
+    lines = embed.description.splitlines()
+
+    assert "**Bijan Robinson**" in next(l for l in lines if "Bijan" in l)
+    assert "**San Francisco" not in next(l for l in lines if "San Francisco" in l)
+
+
+def test_a_drop_with_nothing_added_is_bolded_instead(ctx):
+    """With no pickup to headline, the drop itself is the news."""
+    embed = render_transaction(fixtures.DROP_ONLY, ctx, "Test League")
+    assert "**Travis Kelce**" in embed.description
+
+
+def test_team_goes_in_the_author_line_with_its_avatar(ctx):
+    """One roster involved, so the team gets the author slot to itself."""
+    embed = render_transaction(fixtures.FREE_AGENT_ADD, ctx, "Test League")
+
+    assert embed.author.name == "Hurts Donut"
+    assert embed.author.icon_url.startswith("https://sleepercdn.com/avatars/")
+    # The team is in the author line now, so repeating it inline is noise.
+    assert "Hurts Donut" not in embed.description
+
+
+def test_a_league_specific_avatar_beats_the_account_one(ctx):
+    """Setting one for this league specifically means they meant it here."""
+    from sleeperbot.league import _avatar_url
+
+    user = {"avatar": "account-hash", "metadata": {"avatar": "league-hash"}}
+    assert _avatar_url(user).endswith("league-hash")
+
+
+def test_a_manager_with_no_avatar_gets_a_plain_author_line(ctx):
+    """Most managers never set one — that must not render a broken image."""
+    embed = render_transaction(fixtures.DROP_ONLY, ctx, "Test League")
+
+    assert embed.author.name == "marcus99"
+    # Must be genuinely absent. Passing discord.py's MISSING sentinel here
+    # serialises to the string "..." and reaches Discord as a broken image url.
+    assert embed.author.icon_url is None
+
+
+def test_a_multi_roster_move_falls_back_to_inline_headers(ctx):
+    """The author line holds one name, so several teams have to go inline."""
+    multi = dict(fixtures.FREE_AGENT_ADD, adds={"9509": 1}, drops={"1466": 3})
+    embed = render_transaction(multi, ctx, "Test League")
+
+    assert embed.author.name is None
+    assert "### Hurts Donut" in embed.description
+    assert "### marcus99" in embed.description
+
+
+def test_single_add_gets_the_players_headshot(ctx):
+    embed = render_transaction(fixtures.WAIVER_CLAIM, ctx, "Test League")
+    assert embed.thumbnail.url == "https://sleepercdn.com/content/nfl/players/5849.jpg"
+
+
+def test_a_defense_uses_the_team_logo_not_a_headshot(ctx):
+    """Team defenses have no headshot; their player_id is the team code."""
+    drop_def = dict(fixtures.DROP_ONLY, adds=None, drops={"SF": 1})
+    embed = render_transaction(drop_def, ctx, "Test League")
+    assert embed.thumbnail.url == "https://sleepercdn.com/images/team_logos/nfl/sf.png"
+
+
+def test_a_multi_player_move_gets_no_thumbnail(ctx):
+    """With two players added, either headshot would be an arbitrary pick."""
+    multi = dict(fixtures.FREE_AGENT_ADD, adds={"9509": 1, "1466": 1}, drops=None)
+    embed = render_transaction(multi, ctx, "Test League")
+    assert embed.thumbnail.url is None
 
 
 def test_waiver_claim_shows_the_faab_bid(ctx):
     embed = render_transaction(fixtures.WAIVER_CLAIM, ctx, "Test League")
     text = _text(embed)
 
-    assert "Waiver Claim" in embed.title
+    assert "Waiver Claim" in heading(embed)
     assert "$27" in text
     assert "Kyler Murray" in text
 
@@ -84,7 +198,7 @@ def test_priority_waiver_renders_without_a_faab_field(ctx):
     embed = render_transaction(fixtures.PRIORITY_WAIVER, ctx, "Test League")
     text = _text(embed)
 
-    assert "Waiver Claim" in embed.title
+    assert "Waiver Claim" in heading(embed)
     assert "Travis Kelce" in text
     assert "Patrick Mahomes" in text
     assert "FAAB" not in text
@@ -95,14 +209,14 @@ def test_failed_claim_explains_why(ctx):
     embed = render_transaction(fixtures.FAILED_WAIVER, ctx, "Test League")
     text = _text(embed)
 
-    assert "Failed" in embed.title
+    assert "Failed" in heading(embed)
     assert "already on another roster" in text
 
 
 def test_drop_only_move_is_not_labelled_a_pickup(ctx):
     embed = render_transaction(fixtures.DROP_ONLY, ctx, "Test League")
-    assert "Drop" in embed.title
-    assert "Pickup" not in embed.title
+    assert "Drop" in heading(embed)
+    assert "Pickup" not in heading(embed)
 
 
 # -- trades ---------------------------------------------------------------

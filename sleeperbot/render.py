@@ -13,6 +13,19 @@ import discord
 
 from .league import LeagueContext
 
+# Discord embeds cannot colour arbitrary text — the only mechanism for that is
+# an ANSI code block, which renders grey and monospaced on mobile and would be
+# worse than plain text for a league that reads this on phones. Coloured emoji
+# render identically on every client, so that is how add and drop are marked.
+MARKER_ADD = "🟢"
+MARKER_DROP = "🔴"
+
+# The event type lives in the description as a `##` header rather than in the
+# embed's own title, because a description header renders *larger* than the
+# title does. Discord has no horizontal-rule markdown, so the divider under it
+# is drawn with box characters.
+DIVIDER = "━━━━━━━━━━━━━━━━━━"
+
 COLOR_ADD = 0x2ECC71  # green
 COLOR_DROP = 0xE67E22  # orange — a drop with no add is not good news
 COLOR_TRADE = 0x5865F2  # blurple
@@ -69,20 +82,49 @@ def _render_roster_move(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
     else:
         title, color = "✂️ Drop", COLOR_DROP
 
-    lines = []
-    for roster_id in _rosters_involved(adds, drops):
-        team = ctx.team_name(roster_id)
-        added = [ctx.player_name(pid) for pid, rid in adds.items() if rid == roster_id]
-        dropped = [ctx.player_name(pid) for pid, rid in drops.items() if rid == roster_id]
+    rosters = _rosters_involved(adds, drops)
+    # The author line holds exactly one name, so it can only carry the team when
+    # a single roster is involved — which is every waiver, add and drop. A
+    # commissioner move touching several rosters falls back to inline headers.
+    solo = rosters[0] if len(rosters) == 1 else None
 
-        clauses = []
-        if added:
-            clauses.append("**+** " + ", ".join(added))
-        if dropped:
-            clauses.append("**−** " + ", ".join(dropped))
-        lines.append(f"**{team}**\n" + "\n".join(clauses))
+    blocks = []
+    for roster_id in rosters:
+        added = [pid for pid, rid in adds.items() if rid == roster_id]
+        dropped = [pid for pid, rid in drops.items() if rid == roster_id]
 
-    embed = discord.Embed(title=title, description="\n\n".join(lines), color=color)
+        lines = [] if solo else [f"### {ctx.team_name(roster_id)}"]
+
+        # The added player is the news, so it carries the weight. A drop with
+        # nothing coming back is its own news, so it gets the weight instead.
+        for pid in added:
+            lines.append(f"{MARKER_ADD} {_player_line(ctx, pid, bold=True)}")
+        for pid in dropped:
+            lines.append(f"{MARKER_DROP} {_player_line(ctx, pid, bold=not added)}")
+
+        blocks.append("\n".join(lines))
+
+    embed = discord.Embed(
+        description="\n".join([_heading(title), "\n\n".join(blocks)]), color=color
+    )
+
+    if solo is not None:
+        # Omit icon_url entirely when there is no avatar rather than passing a
+        # placeholder — discord.py stringifies its MISSING sentinel into the
+        # payload, which would reach Discord as a literal "..." image url.
+        avatar = ctx.team_avatar(solo)
+        if avatar:
+            embed.set_author(name=ctx.team_name(solo), icon_url=avatar)
+        else:
+            embed.set_author(name=ctx.team_name(solo))
+
+    # A headshot only reads as "this is who the alert is about" when there is
+    # exactly one candidate; on a multi-player move it would just be arbitrary.
+    focus = _focus_player(adds, drops)
+    if focus:
+        image = ctx.player_image(focus)
+        if image:
+            embed.set_thumbnail(url=image)
 
     bid = (txn.get("settings") or {}).get("waiver_bid")
     if bid is not None:
@@ -111,7 +153,9 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
     incoming: dict[int, list[str]] = {}
 
     for player_id, roster_id in adds.items():
-        incoming.setdefault(roster_id, []).append(ctx.player_name(player_id))
+        incoming.setdefault(roster_id, []).append(
+            _player_line(ctx, player_id, bold=True)
+        )
 
     for pick in picks:
         receiver = pick.get("owner_id")
@@ -136,7 +180,7 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
     for roster_id in txn.get("roster_ids") or []:
         incoming.setdefault(roster_id, ["*Nothing*"])
 
-    embed = discord.Embed(title="🔁 Trade", color=COLOR_TRADE)
+    embed = discord.Embed(description=_heading("🔁 Trade"), color=COLOR_TRADE)
     for roster_id in sorted(incoming):
         embed.add_field(
             name=f"{ctx.team_name(roster_id)} receives",
@@ -149,8 +193,29 @@ def _render_trade(txn: dict, ctx: LeagueContext) -> discord.Embed | None:
 # -- helpers --------------------------------------------------------------
 
 
+def _heading(label: str) -> str:
+    """The event type as an oversized header with a rule under it."""
+    return f"## {label}\n{DIVIDER}"
+
+
 def _rosters_involved(adds: dict, drops: dict) -> list[int]:
     return sorted({*adds.values(), *drops.values()})
+
+
+def _player_line(ctx: LeagueContext, player_id: str, *, bold: bool) -> str:
+    """`**Name** · POS – TEAM`, with the name weighted by how much it matters."""
+    name, detail = ctx.player_parts(player_id)
+    name = f"**{name}**" if bold else name
+    return f"{name} · {detail}" if detail else name
+
+
+def _focus_player(adds: dict, drops: dict) -> str | None:
+    """The one player an alert is really about, if there is one."""
+    if len(adds) == 1:
+        return next(iter(adds))
+    if not adds and len(drops) == 1:
+        return next(iter(drops))
+    return None
 
 
 def _ordinal(number) -> str:

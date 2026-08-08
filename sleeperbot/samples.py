@@ -17,9 +17,18 @@ import time
 
 NOW_MS = int(time.time() * 1000)
 
+# Avatars are deliberately uneven: u1 has an account avatar, u2 set a
+# league-specific one that should win over it, and u3/u4 have none at all —
+# which is the common case and must render as a plain author line rather than a
+# broken image.
 USERS = [
-    {"user_id": "u1", "display_name": "ethanf", "metadata": {"team_name": "Hurts Donut"}},
-    {"user_id": "u2", "display_name": "jake_r", "metadata": {"team_name": "Kupp Noodles"}},
+    {"user_id": "u1", "display_name": "ethanf",
+     "avatar": "d55d1f7075eda01948318de4af616075",
+     "metadata": {"team_name": "Hurts Donut"}},
+    {"user_id": "u2", "display_name": "jake_r",
+     "avatar": "d55d1f7075eda01948318de4af616075",
+     "metadata": {"team_name": "Kupp Noodles",
+                  "avatar": "d55d1f7075eda01948318de4af616075"}},
     {"user_id": "u3", "display_name": "marcus99", "metadata": {}},
     {"user_id": "u4", "display_name": "sam_t", "metadata": {"team_name": "Bijan Mustard"}},
 ]
@@ -28,8 +37,8 @@ ROSTERS = [
     {
         "roster_id": 1,
         "owner_id": "u1",
-        "starters": ["4046", "6794", "7564"],
-        "players": ["4046", "6794", "7564", "4034", "SF"],
+        "starters": ["4046", "6794", "9509"],
+        "players": ["4046", "6794", "9509", "4034", "SF"],
         "settings": {"wins": 7, "losses": 3, "ties": 0, "fpts": 1284, "fpts_decimal": 56,
                      "fpts_against": 1150, "fpts_against_decimal": 12},
     },
@@ -44,8 +53,8 @@ ROSTERS = [
     {
         "roster_id": 3,
         "owner_id": "u3",
-        "starters": ["1234"],
-        "players": ["1234"],
+        "starters": ["1466"],
+        "players": ["1466"],
         "settings": {"wins": 6, "losses": 4, "ties": 0, "fpts": 1150, "fpts_decimal": 0,
                      "fpts_against": 1240, "fpts_against_decimal": 90},
     },
@@ -55,13 +64,17 @@ ROSTERS = [
      "settings": {"wins": 0, "losses": 10, "ties": 0, "fpts": 900, "fpts_decimal": 0}},
 ]
 
+# These are the players' *real* Sleeper ids, not invented ones. That matters
+# because alerts embed a headshot from Sleeper's CDN keyed on the id — a made-up
+# id silently returns whoever really owns it, so the sample for Bijan Robinson
+# showed Ja'Marr Chase. Verified against /v1/players/nfl.
 PLAYERS = {
     "4046": {"name": "Patrick Mahomes", "position": "QB", "team": "KC"},
     "6794": {"name": "Justin Jefferson", "position": "WR", "team": "MIN"},
-    "7564": {"name": "Bijan Robinson", "position": "RB", "team": "ATL"},
+    "9509": {"name": "Bijan Robinson", "position": "RB", "team": "ATL"},
     "4034": {"name": "Christian McCaffrey", "position": "RB", "team": "SF"},
-    "5849": {"name": "Kyler Murray", "position": "QB", "team": "ARI"},
-    "1234": {"name": "Travis Kelce", "position": "TE", "team": "KC"},
+    "5849": {"name": "Kyler Murray", "position": "QB", "team": "MIN"},
+    "1466": {"name": "Travis Kelce", "position": "TE", "team": "KC"},
     "SF": {"name": "San Francisco 49ers", "position": "DEF", "team": "SF"},
 }
 
@@ -71,7 +84,7 @@ FREE_AGENT_ADD = {
     "status": "complete",
     "status_updated": NOW_MS - 60_000,
     "roster_ids": [1],
-    "adds": {"7564": 1},
+    "adds": {"9509": 1},
     "drops": {"SF": 1},
     "settings": None,
 }
@@ -96,7 +109,7 @@ PRIORITY_WAIVER = {
     "status": "complete",
     "status_updated": NOW_MS - 125_000,
     "roster_ids": [1],
-    "adds": {"1234": 1},
+    "adds": {"1466": 1},
     "drops": {"4046": 1},
     "settings": {"seq": 1},
 }
@@ -119,7 +132,7 @@ PENDING_WAIVER = {
     "status": "processing",
     "status_updated": NOW_MS - 5_000,
     "roster_ids": [1],
-    "adds": {"1234": 1},
+    "adds": {"1466": 1},
     "settings": {"waiver_bid": 40},
 }
 
@@ -165,7 +178,7 @@ DROP_ONLY = {
     "status_updated": NOW_MS - 200_000,
     "roster_ids": [3],
     "adds": None,
-    "drops": {"1234": 3},
+    "drops": {"1466": 3},
 }
 
 STALE = {
@@ -174,7 +187,7 @@ STALE = {
     "status": "complete",
     "status_updated": NOW_MS - 10 * 24 * 3600 * 1000,
     "roster_ids": [1],
-    "adds": {"1234": 1},
+    "adds": {"1466": 1},
 }
 
 ALL_TRANSACTIONS = [
