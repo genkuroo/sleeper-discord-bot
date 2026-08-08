@@ -46,6 +46,11 @@ class SmokeClient(discord.Client):
         self.config = config
         self.post = post
         self.failures: list[str] = []
+        # discord.Client has no command tree of its own — the bot builds one in
+        # its constructor, so this needs its own to ask Discord what is
+        # currently registered. It never syncs, so it cannot disturb the real
+        # bot's commands.
+        self.tree = discord.app_commands.CommandTree(self)
 
     async def on_ready(self) -> None:
         try:
@@ -99,7 +104,9 @@ class SmokeClient(discord.Client):
             else:
                 print(f"{WARN} No slash commands registered yet "
                       "(the bot registers them when it starts)")
-        except discord.HTTPException as exc:
+        except Exception as exc:  # noqa: BLE001
+            # Informational only — never let this stop the actual post, which
+            # is the part worth seeing.
             print(f"{WARN} Could not read slash commands: {exc}")
 
         if not self.post:
