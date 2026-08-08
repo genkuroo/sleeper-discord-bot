@@ -121,11 +121,28 @@ Or take it from the web URL: `sleeper.com/leagues/<THIS PART>/team`.
    Messages**, **Embed Links**
 4. Open the generated link and add it to your server
 
-Enable **Developer Mode** in Discord (Settings → Advanced), then right-click
-your server for `DISCORD_GUILD_ID` and the target channel for
-`DISCORD_CHANNEL_ID`.
+### 3. Find the guild and channel ids
 
-### 3. Configure and run
+Put the token in `.env` and let the bot tell you the rest — it already knows
+which servers and channels it can see, and unlike a right-clicked id it also
+knows whether it can actually post there:
+
+```bash
+python scripts/discover_ids.py
+```
+
+```
+Your Test Server
+  DISCORD_GUILD_ID=1234567890
+
+  ✓ #bot-testing              9876543210
+  ✗ #announcements            9876543211  missing: send messages
+```
+
+(The manual route still works: Discord Settings → Advanced → Developer Mode,
+then right-click the server and the channel → Copy ID.)
+
+### 4. Configure and run
 
 ```bash
 cp .env.example .env      # fill in the four required values
@@ -133,7 +150,7 @@ pip install -r requirements.txt
 python -m sleeperbot
 ```
 
-### 4. Check the setup before pointing it at your league
+### 5. Check the setup before pointing it at your league
 
 The bot is silent by design — it posts only when the league does something. That
 makes a first deploy genuinely hard to judge, because an empty channel looks the
@@ -160,7 +177,7 @@ It also runs inside the container, which is the more useful form once deployed:
 docker compose run --rm sleeper-bot python scripts/smoke_post.py
 ```
 
-### 5. Deploy to the Pi
+### 6. Deploy to the Pi
 
 This repo is one of the app repos orchestrated by
 [`homelab-pi`](../homelab-pi), which builds it from `../sleeper-discord-bot`:
